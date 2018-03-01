@@ -73,3 +73,34 @@ if not host:
     raise RuntimeError('Cannot calculate external host name for JupyterHub.')
 
 c.OpenShiftOAuthenticator.oauth_callback_url = 'https://%s/hub/oauth_callback' % host
+
+
+from kubespawner import KubeSpawner
+class OpenShiftSpawner(KubeSpawner):
+  def _options_form_default(self):
+    imagestream_list = oapi_client.list_namespaced_image_stream(namespace)
+
+    result = []
+    for i in imagestream_list.items:
+      if "-notebook" in i.metadata.name:
+        name = i.metadata.name
+        if not i.status.tags:
+            continue
+        for tag in i.status.tags:
+          image = "%s:%s" % (name, tag.tag)
+          result.append("<option value='%s'>%s</option>" % (image, image))
+
+    return """
+    <label for="custom_image">Select desired notebook image</label>
+    <select name="custom_image" size="1">
+    %s
+    </select>
+    """ % "\n".join(result)
+
+  def options_from_form(self, formdata):
+    options = {}
+    options['custom_image'] = formdata['custom_image'][0]
+    self.singleuser_image_spec = options['custom_image']
+    return options
+
+c.JupyterHub.spawner_class = OpenShiftSpawner
