@@ -19,7 +19,7 @@ Loading the Templates
 There is no need to load the templates from the other repositories just to see this example in action. You do need to load the templates from this repository though. Run:
 
 ```
-oc create -f https://raw.githubusercontent.com/jupyter-on-openshift/jupyterhub-ocp-oauth/master/templates.json
+oc create -f https://raw.githubusercontent.com/aicoe/jupyterhub-ocp-oauth/master/templates.json
 ```
 
 This will create the following templates:
