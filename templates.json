@@ -80,7 +80,7 @@
                         "source": {
                             "type": "Git",
                             "git": {
-                                "uri": "https://github.com/jupyter-on-openshift/jupyterhub-ocp-oauth"
+                                "uri": "https://github.com/aicoe/jupyterhub-ocp-oauth"
                             }
                         },
                         "strategy": {
