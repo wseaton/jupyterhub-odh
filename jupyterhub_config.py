@@ -11,6 +11,7 @@ c.KubeSpawner.user_storage_capacity = '2Gi'
 c.KubeSpawner.pvc_name_template = '%s-nb-{username}-pvc' % c.KubeSpawner.hub_connect_ip
 c.KubeSpawner.volumes = [dict(name='data', persistentVolumeClaim=dict(claimName=c.KubeSpawner.pvc_name_template))]
 c.KubeSpawner.volume_mounts = [dict(name='data', mountPath='/opt/app-root/src')]
+c.KubeSpawner.user_storage_class = "glusterfs-apps"
 
 # Work out the public server address for the OpenShift REST API. Don't
 # know how to get this via the REST API client so do a raw request to

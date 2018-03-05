@@ -335,7 +335,8 @@
                             "requests": {
                                 "storage": "1Gi"
                             }
-                        }
+                        },
+                        "storageClassName": "glusterfs-apps"
                     }
                 },
                 {
