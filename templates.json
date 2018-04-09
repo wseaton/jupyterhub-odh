@@ -336,7 +336,7 @@
                                 "storage": "1Gi"
                             }
                         },
-                        "storageClassName": "glusterfs-apps"
+                        "storageClassName": "ceph-dyn-datahub"
                     }
                 },
                 {
