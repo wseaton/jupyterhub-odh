@@ -22,9 +22,13 @@ while True:
   data = res.json()
   users = []
   for key in data.keys():
-    if key.startswith("/user"):
-      if not key.endswith("public"):
-        users.append(key)
+      if key.startswith("/user") and not key.endswith("public"):
+        public_route = data.get(os.path.join(key, "public"))
+        if public_route:
+          if public_route['target'] != data[key]['target']:
+            users.append(key)
+        else:
+          users.append(key)
       else:
         try:
           users.remove(key[:-7])
