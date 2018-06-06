@@ -12,6 +12,8 @@ c.KubeSpawner.pvc_name_template = '%s-nb-{username}-pvc' % c.KubeSpawner.hub_con
 c.KubeSpawner.volumes = [dict(name='data', persistentVolumeClaim=dict(claimName=c.KubeSpawner.pvc_name_template))]
 c.KubeSpawner.volume_mounts = [dict(name='data', mountPath='/opt/app-root/src')]
 c.KubeSpawner.user_storage_class = os.environ.get("JUPYTERHUB_STORAGE_CLASS", c.KubeSpawner.user_storage_class)
+c.KubeSpawner.cpu_limit = float(os.environ.get("SINGLEUSER_CPU_LIMIT", "1"))
+c.KubeSpawner.mem_limit = os.environ.get("SINGLEUSER_MEM_LIMIT", "1G")
 c.KubeSpawner.environment = {
     'PYSPARK_SUBMIT_ARGS': '--packages com.amazonaws:aws-java-sdk:1.7.4,org.apache.hadoop:hadoop-aws:2.7.3 pyspark-shell',
     'PYSPARK_DRIVER_PYTHON': "jupyter",
