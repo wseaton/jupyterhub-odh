@@ -49,7 +49,7 @@
                 },
                 {
                     "name": "STORAGE_CLASS",
-                    "required": false
+                    "required": true
                 }
             ],
             "objects": [
