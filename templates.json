@@ -46,6 +46,10 @@
                     "generate": "expression",
                     "from": "[a-f0-9]{32}",
                     "required": true
+                },
+                {
+                    "name": "STORAGE_CLASS",
+                    "required": false
                 }
             ],
             "objects": [
@@ -240,6 +244,10 @@
                                             {
                                                 "name": "JUPYTERHUB_COOKIE_SECRET",
                                                 "value": "${COOKIE_SECRET}"
+                                            },
+                                            {
+                                                "name": "JUPYTERHUB_STORAGE_CLASS",
+                                                "value": "${STORAGE_CLASS}"
                                             }
                                         ],
                                         "volumeMounts": [
@@ -336,7 +344,7 @@
                                 "storage": "1Gi"
                             }
                         },
-                        "storageClassName": "ceph-dyn-datahub"
+                        "storageClassName": "${STORAGE_CLASS}"
                     }
                 },
                 {
