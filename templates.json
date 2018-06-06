@@ -50,6 +50,14 @@
                 {
                     "name": "STORAGE_CLASS",
                     "required": true
+                },
+                {
+                    "name": "SINGLEUSER_CPU_LIMIT",
+                    "value": "1"
+                },
+                {
+                    "name": "SINGLEUSER_MEM_LIMIT",
+                    "value": "1Gi"
                 }
             ],
             "objects": [
@@ -248,6 +256,14 @@
                                             {
                                                 "name": "JUPYTERHUB_STORAGE_CLASS",
                                                 "value": "${STORAGE_CLASS}"
+                                            },
+                                            {
+                                                "name": "SINGLEUSER_CPU_LIMIT",
+                                                "value": "${SINGLEUSER_CPU_LIMIT}"
+                                            },
+                                            {
+                                                "name": "SINGLEUSER_MEM_LIMIT",
+                                                "value": "${SINGLEUSER_MEM_LIMIT}"
                                             }
                                         ],
                                         "volumeMounts": [
