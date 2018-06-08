@@ -1,1 +1,2 @@
 openshift
+git+https://github.com/vpavlin/jupyterhub-singleuser-profiles.git
