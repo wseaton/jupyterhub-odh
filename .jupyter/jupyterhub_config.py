@@ -22,6 +22,7 @@ c.KubeSpawner.environment = {
     'PYTHONPATH': '$PYTHONPATH:/opt/app-root/lib/python3.6/site-packages/:/opt/app-root/lib/python3.6/site-packages/pyspark/python/:/opt/app-root/lib/python3.6/site-packages/pyspark/python/lib/py4j-0.8.2.1-src.zip',
     #'PYTHONSTARTUP': '/opt/app-root/lib/python3.6/site-packages/pyspark/python/pyspark/shell.py'
 }
+c.KubeSpawner.environment['JUPYTER_PRELOAD_REPOS'] = 'https://gitlab.cee.redhat.com/AICoE/jupyter-notebooks.git'
 
 import uuid
 c.ConfigurableHTTPProxy.auth_token = str(uuid.uuid4())
@@ -158,6 +159,7 @@ if not host:
 
 c.OpenShiftOAuthenticator.oauth_callback_url = 'https://%s/hub/oauth_callback' % host
 
+from jupyterhub_singleuser_profiles.profiles import SingleuserProfiles
 
 from kubespawner import KubeSpawner
 class OpenShiftSpawner(KubeSpawner):
@@ -186,5 +188,18 @@ class OpenShiftSpawner(KubeSpawner):
     options['custom_image'] = formdata['custom_image'][0]
     self.singleuser_image_spec = options['custom_image']
     return options
+
+  def get_env(self):
+    env = super().get_env()
+    dict_result = env
+
+    ss = SingleuserProfiles()
+    ss.load_profiles()
+    profile = ss.get_profile_by_image(self.singleuser_image_spec)
+    if profile and profile.get('env'):
+        dict_result = dict(**env, **profile['env'])
+    
+    return dict_result
+
 
 c.JupyterHub.spawner_class = OpenShiftSpawner
