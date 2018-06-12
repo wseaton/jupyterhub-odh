@@ -6,6 +6,8 @@ import json
 import requests
 
 c.JupyterHub.log_level = 'DEBUG'
+# Do not shut down singleuser servers on restart
+c.JupyterHub.cleanup_servers = False
 
 
 import uuid
@@ -175,19 +177,6 @@ class OpenShiftSpawner(KubeSpawner):
     options['custom_image'] = formdata['custom_image'][0]
     self.singleuser_image_spec = options['custom_image']
     return options
-
-  def get_env(self):
-    env = super().get_env()
-    dict_result = env
-
-    ss = SingleuserProfiles()
-    ss.load_profiles()
-    profile = ss.get_merged_profile(self.singleuser_image_spec, user=self.user.name)
-    if profile and profile.get('env'):
-        print(profile)
-        dict_result = {**env, **profile['env']}
-    
-    return dict_result
 
 def apply_pod_profile(spawner, pod):
   ss = SingleuserProfiles()
