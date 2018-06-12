@@ -6,23 +6,7 @@ import json
 import requests
 
 c.JupyterHub.log_level = 'DEBUG'
-c.KubeSpawner.user_storage_pvc_ensure = True
-c.KubeSpawner.user_storage_capacity = '2Gi'
-c.KubeSpawner.pvc_name_template = '%s-nb-{username}-pvc' % c.KubeSpawner.hub_connect_ip
-c.KubeSpawner.volumes = [dict(name='data', persistentVolumeClaim=dict(claimName=c.KubeSpawner.pvc_name_template))]
-c.KubeSpawner.volume_mounts = [dict(name='data', mountPath='/opt/app-root/src')]
-c.KubeSpawner.user_storage_class = os.environ.get("JUPYTERHUB_STORAGE_CLASS", c.KubeSpawner.user_storage_class)
-c.KubeSpawner.cpu_limit = float(os.environ.get("SINGLEUSER_CPU_LIMIT", "1"))
-c.KubeSpawner.mem_limit = os.environ.get("SINGLEUSER_MEM_LIMIT", "1G")
-c.KubeSpawner.environment = {
-    'PYSPARK_SUBMIT_ARGS': '--packages com.amazonaws:aws-java-sdk:1.7.4,org.apache.hadoop:hadoop-aws:2.7.3 pyspark-shell',
-    'PYSPARK_DRIVER_PYTHON': "jupyter",
-    'PYSPARK_DRIVER_PYTHON_OPTS': "notebook",
-    'SPARK_HOME': '/opt/app-root/lib/python3.6/site-packages/pyspark/',
-    'PYTHONPATH': '$PYTHONPATH:/opt/app-root/lib/python3.6/site-packages/:/opt/app-root/lib/python3.6/site-packages/pyspark/python/:/opt/app-root/lib/python3.6/site-packages/pyspark/python/lib/py4j-0.8.2.1-src.zip',
-    #'PYTHONSTARTUP': '/opt/app-root/lib/python3.6/site-packages/pyspark/python/pyspark/shell.py'
-}
-c.KubeSpawner.environment['JUPYTER_PRELOAD_REPOS'] = 'https://gitlab.cee.redhat.com/AICoE/jupyter-notebooks.git'
+
 
 import uuid
 c.ConfigurableHTTPProxy.auth_token = str(uuid.uuid4())
@@ -163,6 +147,9 @@ from jupyterhub_singleuser_profiles.profiles import SingleuserProfiles
 
 from kubespawner import KubeSpawner
 class OpenShiftSpawner(KubeSpawner):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+
   def _options_form_default(self):
     imagestream_list = oapi_client.list_namespaced_image_stream(namespace)
 
@@ -195,11 +182,27 @@ class OpenShiftSpawner(KubeSpawner):
 
     ss = SingleuserProfiles()
     ss.load_profiles()
-    profile = ss.get_profile_by_image(self.singleuser_image_spec)
+    profile = ss.get_merged_profile(self.singleuser_image_spec, user=self.user.name)
     if profile and profile.get('env'):
-        dict_result = dict(**env, **profile['env'])
+        print(profile)
+        dict_result = {**env, **profile['env']}
     
     return dict_result
 
+def apply_pod_profile(spawner, pod):
+  ss = SingleuserProfiles()
+  ss.load_profiles()
+  profile = ss.get_merged_profile(spawner.singleuser_image_spec, user=spawner.user.name)
+  return SingleuserProfiles.apply_pod_profile(spawner, pod, profile)
 
 c.JupyterHub.spawner_class = OpenShiftSpawner
+
+c.OpenShiftSpawner.modify_pod_hook = apply_pod_profile
+c.OpenShiftSpawner.cpu_limit = float(os.environ.get("SINGLEUSER_CPU_LIMIT", "1"))
+c.OpenShiftSpawner.mem_limit = os.environ.get("SINGLEUSER_MEM_LIMIT", "1G")
+c.OpenShiftSpawner.user_storage_pvc_ensure = True
+c.KubeSpawner.user_storage_capacity = '2Gi'
+c.KubeSpawner.pvc_name_template = '%s-nb-{username}-pvc' % c.KubeSpawner.hub_connect_ip
+c.KubeSpawner.volumes = [dict(name='data', persistentVolumeClaim=dict(claimName=c.KubeSpawner.pvc_name_template))]
+c.KubeSpawner.volume_mounts = [dict(name='data', mountPath='/opt/app-root/src')]
+c.KubeSpawner.user_storage_class = os.environ.get("JUPYTERHUB_STORAGE_CLASS", c.KubeSpawner.user_storage_class)
