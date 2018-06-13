@@ -21,28 +21,29 @@ while True:
 
   data = res.json()
   users = []
-  for key in data.keys():
+  for key, val in data.items():
       if key.startswith("/user") and not key.endswith("public"):
         public_route = data.get(os.path.join(key, "public"))
         if public_route:
-          if public_route['target'] != data[key]['target']:
-            users.append(key)
+          if public_route['target'] != val['target']:
+            users.append((key, "update"))
         else:
-          users.append(key)
+          users.append((key, "add"))
       else:
         try:
-          users.remove(key[:-7])
+          if users[users.remove(key[:-7])][1] != "update":
+            users.remove(key[:-7])
         except ValueError as e:
           #Delete public route for non-existent user!
           pass
 
   if len(users) > 0:
     for user in users:
-      target = urlparse(data[user]["target"])
+      target = urlparse(data[user[0]]["target"])
       print(target)
       new_target_url = "%s://%s:%s" % (target.scheme, target.hostname, str(NBVIEWER_PORT))
-      print(os.path.join(PROXY_API_URL, "api/routes", user, "public"))
-      res_post = requests.post(os.path.join(PROXY_API_URL, "api/routes", user.strip("/"), "public"), json={"target": new_target_url}, headers={'Authorization': 'token %s' % PROXY_TOKEN})
+      print(os.path.join(PROXY_API_URL, "api/routes", user[0], "public"))
+      res_post = requests.post(os.path.join(PROXY_API_URL, "api/routes", user[0].strip("/"), "public"), json={"target": new_target_url}, headers={'Authorization': 'token %s' % PROXY_TOKEN})
       if res_post.status_code != 201:
         print("Failed to create route for %s" % user)
 
