@@ -1,4 +1,4 @@
-c.KubeSpawner.http_timeout = 60 * 3 #Images are big, take time to pull
+c.KubeSpawner.http_timeout = 60 * 10 #Images are big, take time to pull, make it 10 mins for now because of storage issue
 
 import os
 
