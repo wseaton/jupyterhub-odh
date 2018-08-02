@@ -151,6 +151,7 @@ from kubespawner import KubeSpawner
 class OpenShiftSpawner(KubeSpawner):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
+    self.single_user_services = []
 
   def _options_form_default(self):
     imagestream_list = oapi_client.list_namespaced_image_stream(namespace)
@@ -178,14 +179,24 @@ class OpenShiftSpawner(KubeSpawner):
     self.singleuser_image_spec = options['custom_image']
     return options
 
+ss = SingleuserProfiles(server_url, client_secret)
+
 def apply_pod_profile(spawner, pod):
-  ss = SingleuserProfiles()
   ss.load_profiles()
   profile = ss.get_merged_profile(spawner.singleuser_image_spec, user=spawner.user.name)
   return SingleuserProfiles.apply_pod_profile(spawner, pod, profile)
 
+def setup_environment(spawner):
+    ss.load_profiles()
+    ss.setup_services(spawner, spawner.singleuser_image_spec, spawner.user.name)
+
+def clean_environment(spawner):
+    ss.clean_services(spawner, spawner.user.name)
+
 c.JupyterHub.spawner_class = OpenShiftSpawner
 
+c.OpenShiftSpawner.pre_spawn_hook = setup_environment
+c.OpenShiftSpawner.post_stop_hook = clean_environment
 c.OpenShiftSpawner.modify_pod_hook = apply_pod_profile
 c.OpenShiftSpawner.cpu_limit = float(os.environ.get("SINGLEUSER_CPU_LIMIT", "1"))
 c.OpenShiftSpawner.mem_limit = os.environ.get("SINGLEUSER_MEM_LIMIT", "1G")
