@@ -153,6 +153,7 @@ class OpenShiftSpawner(KubeSpawner):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.single_user_services = []
+    self.single_user_profiles = SingleuserProfiles(server_url, client_secret)
 
   def _options_form_default(self):
     imagestream_list = oapi_client.list_namespaced_image_stream(namespace)
@@ -167,32 +168,74 @@ class OpenShiftSpawner(KubeSpawner):
           image = "%s:%s" % (name, tag.tag)
           result.append("<option value='%s'>%s</option>" % (image, image))
 
-    return """
+    cm_data = self.single_user_profiles.get_user_profile_cm(self.user.name)
+    print(cm_data)
+    envs = cm_data.get('env', {})
+
+    response = """
+    <h3>JupyterHub Server Image</h3>
     <label for="custom_image">Select desired notebook image</label>
-    <select name="custom_image" size="1">
+    <select class="form-control" name="custom_image" size="1">
     %s
     </select>
+    \n
     """ % "\n".join(result)
+
+
+    response += "<h3>Environment Variables</h3>"
+    for key, val in envs.items():
+        input_type = "text"
+        if key in ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']:
+            input_type = "password"
+        response += """
+        <p>
+        <label>%s: </label><input class="form-control" type="%s" value="%s" name="%s" />
+        </p>
+        """ % (key, input_type, val, key)
+
+    response += """
+    <p>
+    <label>Variable name: </label><input class="form-control" type="text" name="variable_name_1" />
+    <label>Variable value: </label><input class="form-control" type="text" name="variable_value_1" />
+    </p>
+    """
+
+    return response
 
   def options_from_form(self, formdata):
     options = {}
     options['custom_image'] = formdata['custom_image'][0]
     self.singleuser_image_spec = options['custom_image']
+    del formdata['custom_image']
+
+    data = {} #'AWS_ACCESS_KEY_ID': formdata['AWS_ACCESS_KEY_ID'][0], 'AWS_SECRET_ACCESS_KEY': formdata['AWS_SECRET_ACCESS_KEY'][0]
+    print(formdata)
+    for key, val in formdata.items():
+        if key.startswith("variable_name"):
+            index = key.split("_")[-1]
+            if len(formdata[key][0]) > 0:
+                data[formdata[key][0]] = formdata['variable_value_%s' % index][0]
+        elif not key.startswith("variable_value") and len(formdata[key][0]) > 0:
+            data[key] = formdata[key][0]
+
+    print(data)
+
+    self.single_user_profiles.update_user_profile_cm(self.user.name, data)
     return options
 
-ss = SingleuserProfiles(server_url, client_secret)
+
 
 def apply_pod_profile(spawner, pod):
-  ss.load_profiles()
-  profile = ss.get_merged_profile(spawner.singleuser_image_spec, user=spawner.user.name)
+  spawner.single_user_profiles.load_profiles(username=spawner.user.name)
+  profile = spawner.single_user_profiles.get_merged_profile(spawner.singleuser_image_spec, user=spawner.user.name)
   return SingleuserProfiles.apply_pod_profile(spawner, pod, profile)
 
 def setup_environment(spawner):
-    ss.load_profiles()
-    ss.setup_services(spawner, spawner.singleuser_image_spec, spawner.user.name)
+    spawner.single_user_profiles.load_profiles(username=spawner.user.name)
+    spawner.single_user_profiles.setup_services(spawner, spawner.singleuser_image_spec, spawner.user.name)
 
 def clean_environment(spawner):
-    ss.clean_services(spawner, spawner.user.name)
+    spawner.single_user_profiles.clean_services(spawner, spawner.user.name)
 
 c.JupyterHub.spawner_class = OpenShiftSpawner
 
