@@ -181,11 +181,16 @@ class OpenShiftSpawner(KubeSpawner):
     \n
     """ % "\n".join(result)
 
+    aws_env = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']
+    for key in aws_env:
+        if key not in envs.keys():
+            envs[key] = ""
+
 
     response += "<h3>Environment Variables</h3>"
     for key, val in envs.items():
         input_type = "text"
-        if key in ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']:
+        if key in aws_env:
             input_type = "password"
         response += """
         <p>
