@@ -158,6 +158,11 @@ class OpenShiftSpawner(KubeSpawner):
   def _options_form_default(self):
     imagestream_list = oapi_client.list_namespaced_image_stream(namespace)
 
+    cm_data = self.single_user_profiles.get_user_profile_cm(self.user.name)
+    print(cm_data)
+    envs = cm_data.get('env', {})
+    last_image = cm_data.get('last_selected_image', '')
+
     result = []
     for i in imagestream_list.items:
       if "-notebook" in i.metadata.name:
@@ -165,12 +170,11 @@ class OpenShiftSpawner(KubeSpawner):
         if not i.status.tags:
             continue
         for tag in i.status.tags:
+          selected = ""
           image = "%s:%s" % (name, tag.tag)
-          result.append("<option value='%s'>%s</option>" % (image, image))
-
-    cm_data = self.single_user_profiles.get_user_profile_cm(self.user.name)
-    print(cm_data)
-    envs = cm_data.get('env', {})
+          if image == last_image:
+              selected = "selected=selected"
+          result.append("<option value='%s' %s>%s</option>" % (image, selected, image))
 
     response = """
     <h3>JupyterHub Server Image</h3>
@@ -224,8 +228,9 @@ class OpenShiftSpawner(KubeSpawner):
             data[key] = formdata[key][0]
 
     print(data)
+    cm_data = {'env': data, 'last_selected_image': self.singleuser_image_spec}
 
-    self.single_user_profiles.update_user_profile_cm(self.user.name, data)
+    self.single_user_profiles.update_user_profile_cm(self.user.name, cm_data)
     return options
 
 
