@@ -155,12 +155,14 @@ class OpenShiftSpawner(KubeSpawner):
     self.single_user_services = []
     self.single_user_profiles = SingleuserProfiles(server_url, client_secret)
     self.deployment_size = None
+    self.gpu_privileged = True if os.environ.get('GPU_PRIVILEGED') else False
 
   def _options_form_default(self):
     imagestream_list = oapi_client.list_namespaced_image_stream(namespace)
 
     cm_data = self.single_user_profiles.get_user_profile_cm(self.user.name)
     envs = cm_data.get('env', {})
+    gpu = cm_data.get('gpu', 0)
     last_image = cm_data.get('last_selected_image', '')
     last_size = cm_data.get('last_selected_size', '')
 
@@ -188,11 +190,17 @@ class OpenShiftSpawner(KubeSpawner):
 
     response += self.single_user_profiles.get_sizes_form(self.user.name)
 
+    response += """
+        <p>
+            <label>GPU: </label>
+            <input class="form-control" type="text" value="%s" name="gpu" />
+        </p>
+        """ % gpu
+
     aws_env = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']
     for key in aws_env:
         if key not in envs.keys():
             envs[key] = ""
-
 
     response += "<h3>Environment Variables</h3>"
     for key, val in envs.items():
@@ -223,8 +231,33 @@ class OpenShiftSpawner(KubeSpawner):
     del formdata['custom_image']
     del formdata['size']
 
+    gpu = formdata['gpu'][0]
+    del formdata['gpu']
+
+    GPU_KEY = "nvidia.com/gpu"
+
+    print("Num of GPUs: %s" % gpu)
+    if int(gpu) > 0:
+        if self.gpu_privileged:
+            self.privileged = True
+        else:
+            self.privileged = False
+
+        if not self.extra_resource_guarantees:
+            self.extra_resource_guarantees = {}
+        self.extra_resource_guarantees[GPU_KEY] = gpu
+
+        if not self.extra_resource_limits:
+            self.extra_resource_limits = {}
+        self.extra_resource_limits[GPU_KEY] = gpu
+    else:
+        if self.extra_resource_guarantees and self.extra_resource_guarantees.get(GPU_KEY):
+            del self.extra_resource_guarantees[GPU_KEY]
+        if self.extra_resource_guarantees and self.extra_resource_limit.get(GPU_KEY):
+            del self.extra_resource_limit[GPU_KEY]
+        self.privileged = False
+
     data = {} #'AWS_ACCESS_KEY_ID': formdata['AWS_ACCESS_KEY_ID'][0], 'AWS_SECRET_ACCESS_KEY': formdata['AWS_SECRET_ACCESS_KEY'][0]
-    print(formdata)
     for key, val in formdata.items():
         if key.startswith("variable_name"):
             index = key.split("_")[-1]
@@ -233,8 +266,12 @@ class OpenShiftSpawner(KubeSpawner):
         elif not key.startswith("variable_value") and len(formdata[key][0]) > 0:
             data[key] = formdata[key][0]
 
-    print(data)
-    cm_data = {'env': data, 'last_selected_image': self.image_spec, 'last_selected_size': self.deployment_size}
+    cm_data = {
+        'env': data,
+        'last_selected_image': self.singleuser_image_spec,
+        'gpu': gpu,
+        'last_selected_size': self.deployment_size
+        }
 
     self.single_user_profiles.update_user_profile_cm(self.user.name, cm_data)
     return options
