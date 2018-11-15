@@ -21,7 +21,7 @@ public_service_dict.update(os.environ)
 c.JupyterHub.services = [
                             {
                                 'name': 'public',
-                                'command': ['bash', '-c', 'python /opt/app-root/src/public_service.py'],
+                                'command': ['bash', '-c', 'jupyter_publish_service'],
                                 'environment': public_service_dict
                             }
                         ]
