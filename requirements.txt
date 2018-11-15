@@ -1,3 +1,4 @@
 openshift
 jupyterhub-kubespawner==0.9.0
 git+https://github.com/vpavlin/jupyterhub-singleuser-profiles.git@12ff0db4d35f671649277f09f9993d0751aee413
+git+https://github.com/vpavlin/jupyter-publish-extension.git@7cbf34e494fd9a0a79e9cd9a8c1d48a6775b9f49
