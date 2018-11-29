@@ -214,7 +214,7 @@ class OpenShiftSpawner(KubeSpawner):
   def options_from_form(self, formdata):
     options = {}
     options['custom_image'] = formdata['custom_image'][0]
-    self.singleuser_image_spec = options['custom_image']
+    self.image_spec = options['custom_image']
     del formdata['custom_image']
 
     data = {} #'AWS_ACCESS_KEY_ID': formdata['AWS_ACCESS_KEY_ID'][0], 'AWS_SECRET_ACCESS_KEY': formdata['AWS_SECRET_ACCESS_KEY'][0]
@@ -228,7 +228,7 @@ class OpenShiftSpawner(KubeSpawner):
             data[key] = formdata[key][0]
 
     print(data)
-    cm_data = {'env': data, 'last_selected_image': self.singleuser_image_spec}
+    cm_data = {'env': data, 'last_selected_image': self.image_spec}
 
     self.single_user_profiles.update_user_profile_cm(self.user.name, cm_data)
     return options
@@ -237,12 +237,12 @@ class OpenShiftSpawner(KubeSpawner):
 
 def apply_pod_profile(spawner, pod):
   spawner.single_user_profiles.load_profiles(username=spawner.user.name)
-  profile = spawner.single_user_profiles.get_merged_profile(spawner.singleuser_image_spec, user=spawner.user.name)
+  profile = spawner.single_user_profiles.get_merged_profile(spawner.image_spec, user=spawner.user.name)
   return SingleuserProfiles.apply_pod_profile(spawner, pod, profile)
 
 def setup_environment(spawner):
     spawner.single_user_profiles.load_profiles(username=spawner.user.name)
-    spawner.single_user_profiles.setup_services(spawner, spawner.singleuser_image_spec, spawner.user.name)
+    spawner.single_user_profiles.setup_services(spawner, spawner.image_spec, spawner.user.name)
 
 def clean_environment(spawner):
     spawner.single_user_profiles.clean_services(spawner, spawner.user.name)
@@ -254,8 +254,8 @@ c.OpenShiftSpawner.post_stop_hook = clean_environment
 c.OpenShiftSpawner.modify_pod_hook = apply_pod_profile
 c.OpenShiftSpawner.cpu_limit = float(os.environ.get("SINGLEUSER_CPU_LIMIT", "1"))
 c.OpenShiftSpawner.mem_limit = os.environ.get("SINGLEUSER_MEM_LIMIT", "1G")
-c.OpenShiftSpawner.user_storage_pvc_ensure = True
-c.KubeSpawner.user_storage_capacity = '2Gi'
+c.OpenShiftSpawner.storage_pvc_ensure = True
+c.KubeSpawner.storage_capacity = '2Gi'
 c.KubeSpawner.pvc_name_template = '%s-nb-{username}-pvc' % os.environ['JUPYTERHUB_SERVICE_NAME']
 c.KubeSpawner.volumes = [dict(name='data', persistentVolumeClaim=dict(claimName=c.KubeSpawner.pvc_name_template))]
 c.KubeSpawner.volume_mounts = [dict(name='data', mountPath='/opt/app-root/src')]
