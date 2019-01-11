@@ -82,7 +82,7 @@ c.KubeSpawner.singleuser_extra_containers = [
 # just to avoid potential for any problems with connection reuse.
 
 server_url = 'https://openshift.default.svc.cluster.local'
-api_url = '%s/oapi' % server_url
+api_url = '%s/api' % server_url
 
 with requests.Session() as session:
     response = session.get(api_url, verify=False)
