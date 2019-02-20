@@ -154,14 +154,15 @@ class OpenShiftSpawner(KubeSpawner):
     super().__init__(*args, **kwargs)
     self.single_user_services = []
     self.single_user_profiles = SingleuserProfiles(server_url, client_secret)
+    self.deployment_size = None
 
   def _options_form_default(self):
     imagestream_list = oapi_client.list_namespaced_image_stream(namespace)
 
     cm_data = self.single_user_profiles.get_user_profile_cm(self.user.name)
-    print(cm_data)
     envs = cm_data.get('env', {})
     last_image = cm_data.get('last_selected_image', '')
+    last_size = cm_data.get('last_selected_size', '')
 
     result = []
     for i in imagestream_list.items:
@@ -184,6 +185,8 @@ class OpenShiftSpawner(KubeSpawner):
     </select>
     \n
     """ % "\n".join(result)
+
+    response += self.single_user_profiles.get_sizes_form(self.user.name)
 
     aws_env = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']
     for key in aws_env:
@@ -214,8 +217,11 @@ class OpenShiftSpawner(KubeSpawner):
   def options_from_form(self, formdata):
     options = {}
     options['custom_image'] = formdata['custom_image'][0]
+    options['size'] = formdata['size'][0]
     self.image_spec = options['custom_image']
+    self.deployment_size = formdata['size'][0]
     del formdata['custom_image']
+    del formdata['size']
 
     data = {} #'AWS_ACCESS_KEY_ID': formdata['AWS_ACCESS_KEY_ID'][0], 'AWS_SECRET_ACCESS_KEY': formdata['AWS_SECRET_ACCESS_KEY'][0]
     print(formdata)
@@ -228,7 +234,7 @@ class OpenShiftSpawner(KubeSpawner):
             data[key] = formdata[key][0]
 
     print(data)
-    cm_data = {'env': data, 'last_selected_image': self.image_spec}
+    cm_data = {'env': data, 'last_selected_image': self.image_spec, 'last_selected_size': self.deployment_size}
 
     self.single_user_profiles.update_user_profile_cm(self.user.name, cm_data)
     return options
@@ -237,7 +243,7 @@ class OpenShiftSpawner(KubeSpawner):
 
 def apply_pod_profile(spawner, pod):
   spawner.single_user_profiles.load_profiles(username=spawner.user.name)
-  profile = spawner.single_user_profiles.get_merged_profile(spawner.image_spec, user=spawner.user.name)
+  profile = spawner.single_user_profiles.get_merged_profile(spawner.image_spec, user=spawner.user.name, size=spawner.deployment_size)
   return SingleuserProfiles.apply_pod_profile(spawner, pod, profile)
 
 def setup_environment(spawner):
