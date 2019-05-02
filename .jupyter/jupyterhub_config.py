@@ -81,19 +81,19 @@ c.KubeSpawner.singleuser_extra_containers = [
 # and later calls against REST API don't attempt to reuse it. This is
 # just to avoid potential for any problems with connection reuse.
 
-server_url = 'https://openshift.default.svc.cluster.local'
-api_url = '%s/api' % server_url
+server_url = "https://openshift.default.svc.cluster.local"
+auth_info_url = '%s/.well-known/oauth-authorization-server' % server_url
 
 with requests.Session() as session:
-    response = session.get(api_url, verify=False)
+    response = session.get(auth_info_url, verify=False)
     data = json.loads(response.content.decode('UTF-8'))
-    address = data['serverAddressByClientCIDRs'][0]['serverAddress']
+    address = data["issuer"]
 
 # Enable the OpenShift authenticator. The OPENSHIFT_URL environment
 # variable must be set before importing the authenticator as it only
 # reads it when module is first imported.
 
-os.environ['OPENSHIFT_URL'] = 'https://%s' % address
+os.environ['OPENSHIFT_URL'] = address
 
 from oauthenticator.openshift import OpenShiftOAuthenticator
 c.JupyterHub.authenticator_class = OpenShiftOAuthenticator
@@ -125,15 +125,21 @@ c.OpenShiftOAuthenticator.client_secret = client_secret
 # Work out hostname for the exposed route of the JupyterHub server. This
 # is tricky as we need to use the REST API to query it.
 
-import openshift.client
-import openshift.config
+from kubernetes import client, config
+from openshift.dynamic import DynamicClient
 
-openshift.config.load_incluster_config()
+config.load_incluster_config()
 
-api_client = openshift.client.ApiClient()
-oapi_client = openshift.client.OapiApi(api_client)
+configuration = client.Configuration()
+configuration.verify_ssl = False
 
-route_list = oapi_client.list_namespaced_route(namespace)
+oapi_client = DynamicClient(
+    client.ApiClient(configuration=configuration)
+)
+
+routes = oapi_client.resources.get(kind='Route', api_version='route.openshift.io/v1')
+
+route_list = routes.get(namespace=namespace)
 
 host = None
 
@@ -158,7 +164,8 @@ class OpenShiftSpawner(KubeSpawner):
     self.gpu_privileged = True if os.environ.get('GPU_PRIVILEGED') else False
 
   def _options_form_default(self):
-    imagestream_list = oapi_client.list_namespaced_image_stream(namespace)
+    imagestreams = oapi_client.resources.get(kind='ImageStream', api_version='image.openshift.io/v1')
+    imagestream_list = imagestreams.get(namespace=namespace)
 
     cm_data = self.single_user_profiles.get_user_profile_cm(self.user.name)
     envs = cm_data.get('env', {})
