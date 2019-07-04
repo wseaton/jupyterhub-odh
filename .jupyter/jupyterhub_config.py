@@ -153,16 +153,15 @@ if not host:
 c.OpenShiftOAuthenticator.oauth_callback_url = 'https://%s/hub/oauth_callback' % host
 
 from jupyterhub_singleuser_profiles.profiles import SingleuserProfiles
-import distutils
 
 from kubespawner import KubeSpawner
 class OpenShiftSpawner(KubeSpawner):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.single_user_services = []
-    self.single_user_profiles = SingleuserProfiles(server_url, client_secret)
+    self.single_user_profiles = SingleuserProfiles(server_url, client_secret, gpu_mode=os.environ.get('GPU_MODE'))
+    self.gpu_mode = self.single_user_profiles.gpu_mode
     self.deployment_size = None
-    self.gpu_privileged = distutils.util.strtobool(os.environ.get('GPU_PRIVILEGED', "False"))
 
   def _options_form_default(self):
     imagestreams = oapi_client.resources.get(kind='ImageStream', api_version='image.openshift.io/v1')
@@ -244,9 +243,8 @@ class OpenShiftSpawner(KubeSpawner):
 
     GPU_KEY = "nvidia.com/gpu"
 
-    print("Num of GPUs: %s" % gpu)
     if int(gpu) > 0:
-        if self.gpu_privileged:
+        if self.gpu_mode and self.gpu_mode == self.single_user_profiles.GPU_MODE_PRIVILEGED:
             self.privileged = True
         else:
             self.privileged = False
