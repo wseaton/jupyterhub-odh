@@ -261,8 +261,8 @@ class OpenShiftSpawner(KubeSpawner):
     else:
         if self.extra_resource_guarantees and self.extra_resource_guarantees.get(GPU_KEY):
             del self.extra_resource_guarantees[GPU_KEY]
-        if self.extra_resource_guarantees and self.extra_resource_limit.get(GPU_KEY):
-            del self.extra_resource_limit[GPU_KEY]
+        if self.extra_resource_limits and self.extra_resource_limits.get(GPU_KEY):
+            del self.extra_resource_limits[GPU_KEY]
         self.privileged = False
 
     data = {} #'AWS_ACCESS_KEY_ID': formdata['AWS_ACCESS_KEY_ID'][0], 'AWS_SECRET_ACCESS_KEY': formdata['AWS_SECRET_ACCESS_KEY'][0]
