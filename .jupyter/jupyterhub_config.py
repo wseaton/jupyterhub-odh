@@ -304,7 +304,7 @@ c.OpenShiftSpawner.modify_pod_hook = apply_pod_profile
 c.OpenShiftSpawner.cpu_limit = float(os.environ.get("SINGLEUSER_CPU_LIMIT", "1"))
 c.OpenShiftSpawner.mem_limit = os.environ.get("SINGLEUSER_MEM_LIMIT", "1G")
 c.OpenShiftSpawner.storage_pvc_ensure = True
-c.KubeSpawner.storage_capacity = '2Gi'
+c.KubeSpawner.storage_capacity = os.environ.get('SINGLEUSER_PVC_SIZE', '2Gi')
 c.KubeSpawner.pvc_name_template = '%s-nb-{username}-pvc' % os.environ['JUPYTERHUB_SERVICE_NAME']
 c.KubeSpawner.volumes = [dict(name='data', persistentVolumeClaim=dict(claimName=c.KubeSpawner.pvc_name_template))]
 c.KubeSpawner.volume_mounts = [dict(name='data', mountPath='/opt/app-root/src')]
