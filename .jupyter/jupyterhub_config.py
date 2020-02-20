@@ -173,14 +173,7 @@ class OpenShiftSpawner(KubeSpawner):
     last_image = cm_data.get('last_selected_image', '')
     last_size = cm_data.get('last_selected_size', '')
     
-    response = """
-    <h3>JupyterHub Server Image</h3>
-    <label for="custom_image">Select desired notebook image</label>
-    <select class="form-control" name="custom_image" size="1">
-    %s
-    </select>
-    \n
-    """ % "\n".join(self.single_user_profiles.get_image_list(imagestream_list, last_image))
+    response = self.single_user_profiles.get_image_list(imagestream_list, last_image)
 
     response += self.single_user_profiles.get_sizes_form(self.user.name)
 
