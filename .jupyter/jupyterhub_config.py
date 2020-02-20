@@ -172,20 +172,7 @@ class OpenShiftSpawner(KubeSpawner):
     gpu = cm_data.get('gpu', 0)
     last_image = cm_data.get('last_selected_image', '')
     last_size = cm_data.get('last_selected_size', '')
-
-    result = []
-    for i in imagestream_list.items:
-      if "-notebook" in i.metadata.name:
-        name = i.metadata.name
-        if not i.status.tags:
-            continue
-        for tag in i.status.tags:
-          selected = ""
-          image = "%s:%s" % (name, tag.tag)
-          if image == last_image:
-              selected = "selected=selected"
-          result.append("<option value='%s' %s>%s</option>" % (image, selected, image))
-
+    
     response = """
     <h3>JupyterHub Server Image</h3>
     <label for="custom_image">Select desired notebook image</label>
@@ -193,7 +180,7 @@ class OpenShiftSpawner(KubeSpawner):
     %s
     </select>
     \n
-    """ % "\n".join(result)
+    """ % "\n".join(self.single_user_profiles.get_image_list(imagestream_list, last_image))
 
     response += self.single_user_profiles.get_sizes_form(self.user.name)
 
