@@ -164,16 +164,13 @@ class OpenShiftSpawner(KubeSpawner):
     self.deployment_size = None
 
   def _options_form_default(self):
-    imagestreams = oapi_client.resources.get(kind='ImageStream', api_version='image.openshift.io/v1')
-    imagestream_list = imagestreams.get(namespace=namespace)
-
     cm_data = self.single_user_profiles.get_user_profile_cm(self.user.name)
     envs = cm_data.get('env', {})
     gpu = cm_data.get('gpu', 0)
     last_image = cm_data.get('last_selected_image', '')
     last_size = cm_data.get('last_selected_size', '')
     
-    response = self.single_user_profiles.get_image_list(imagestream_list, last_image)
+    response = self.single_user_profiles.get_image_list_form(self.user.name)
 
     response += self.single_user_profiles.get_sizes_form(self.user.name)
 
