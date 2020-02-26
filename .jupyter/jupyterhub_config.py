@@ -164,36 +164,13 @@ class OpenShiftSpawner(KubeSpawner):
     self.deployment_size = None
 
   def _options_form_default(self):
-    imagestreams = oapi_client.resources.get(kind='ImageStream', api_version='image.openshift.io/v1')
-    imagestream_list = imagestreams.get(namespace=namespace)
-
     cm_data = self.single_user_profiles.get_user_profile_cm(self.user.name)
     envs = cm_data.get('env', {})
     gpu = cm_data.get('gpu', 0)
     last_image = cm_data.get('last_selected_image', '')
     last_size = cm_data.get('last_selected_size', '')
-
-    result = []
-    for i in imagestream_list.items:
-      if "-notebook" in i.metadata.name:
-        name = i.metadata.name
-        if not i.status.tags:
-            continue
-        for tag in i.status.tags:
-          selected = ""
-          image = "%s:%s" % (name, tag.tag)
-          if image == last_image:
-              selected = "selected=selected"
-          result.append("<option value='%s' %s>%s</option>" % (image, selected, image))
-
-    response = """
-    <h3>JupyterHub Server Image</h3>
-    <label for="custom_image">Select desired notebook image</label>
-    <select class="form-control" name="custom_image" size="1">
-    %s
-    </select>
-    \n
-    """ % "\n".join(result)
+    
+    response = self.single_user_profiles.get_image_list_form(self.user.name)
 
     response += self.single_user_profiles.get_sizes_form(self.user.name)
 
