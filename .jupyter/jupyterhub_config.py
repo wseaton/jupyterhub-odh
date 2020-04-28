@@ -161,6 +161,7 @@ class OpenShiftSpawner(KubeSpawner):
     self.single_user_services = []
     self.single_user_profiles = SingleuserProfiles(server_url, client_secret, gpu_mode=os.environ.get('GPU_MODE'))
     self.gpu_mode = self.single_user_profiles.gpu_mode
+    self.gpu_count = 0
     self.deployment_size = None
 
   def _options_form_default(self):
@@ -215,30 +216,8 @@ class OpenShiftSpawner(KubeSpawner):
     del formdata['custom_image']
     del formdata['size']
 
-    gpu = formdata['gpu'][0]
+    self.gpu_count = formdata['gpu'][0]
     del formdata['gpu']
-
-    GPU_KEY = "nvidia.com/gpu"
-
-    if int(gpu) > 0:
-        if self.gpu_mode and self.gpu_mode == self.single_user_profiles.GPU_MODE_PRIVILEGED:
-            self.privileged = True
-        else:
-            self.privileged = False
-
-        if not self.extra_resource_guarantees:
-            self.extra_resource_guarantees = {}
-        self.extra_resource_guarantees[GPU_KEY] = gpu
-
-        if not self.extra_resource_limits:
-            self.extra_resource_limits = {}
-        self.extra_resource_limits[GPU_KEY] = gpu
-    else:
-        if self.extra_resource_guarantees and self.extra_resource_guarantees.get(GPU_KEY):
-            del self.extra_resource_guarantees[GPU_KEY]
-        if self.extra_resource_limits and self.extra_resource_limits.get(GPU_KEY):
-            del self.extra_resource_limits[GPU_KEY]
-        self.privileged = False
 
     data = {} #'AWS_ACCESS_KEY_ID': formdata['AWS_ACCESS_KEY_ID'][0], 'AWS_SECRET_ACCESS_KEY': formdata['AWS_SECRET_ACCESS_KEY'][0]
     for key, val in formdata.items():
@@ -252,7 +231,7 @@ class OpenShiftSpawner(KubeSpawner):
     cm_data = {
         'env': data,
         'last_selected_image': self.singleuser_image_spec,
-        'gpu': gpu,
+        'gpu': self.gpu_count,
         'last_selected_size': self.deployment_size
         }
 
