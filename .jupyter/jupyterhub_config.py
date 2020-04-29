@@ -125,13 +125,15 @@ c.OpenShiftOAuthenticator.client_secret = client_secret
 # Work out hostname for the exposed route of the JupyterHub server. This
 # is tricky as we need to use the REST API to query it.
 
+verify_ssl = False
+
 from kubernetes import client, config
 from openshift.dynamic import DynamicClient
 
 config.load_incluster_config()
 
 configuration = client.Configuration()
-configuration.verify_ssl = False
+configuration.verify_ssl = verify_ssl
 
 oapi_client = DynamicClient(
     client.ApiClient(configuration=configuration)
@@ -159,7 +161,7 @@ class OpenShiftSpawner(KubeSpawner):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.single_user_services = []
-    self.single_user_profiles = SingleuserProfiles(server_url, client_secret, gpu_mode=os.environ.get('GPU_MODE'))
+    self.single_user_profiles = SingleuserProfiles(gpu_mode=os.environ.get('GPU_MODE'), verify_ssl=verify_ssl)
     self.gpu_mode = self.single_user_profiles.gpu_mode
     self.gpu_count = 0
     self.deployment_size = None
