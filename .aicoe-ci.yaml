@@ -1,0 +1,9 @@
+check:
+  - thoth-build
+build:
+  base-image: "quay.io/opendatahub/jupyterhub:3.5.0"
+  build-stratergy: "Source"
+  registry: "quay.io"
+  registry-org: "odh-jupyterhub"
+  registry-project: "jupyterhub-img"
+  registry-secret: "odh-jupyterhub-thoth-pusher-secret"
