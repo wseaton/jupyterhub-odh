@@ -1,7 +1,7 @@
 check:
   - thoth-build
 build:
-  base-image: "quay.io/opendatahub/jupyterhub:3.5.0"
+  base-image: "quay.io/odh-jupyterhub/jupyterhub:3.5.0"
   build-stratergy: "Source"
   registry: "quay.io"
   registry-org: "odh-jupyterhub"
