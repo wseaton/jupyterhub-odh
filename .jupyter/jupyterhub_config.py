@@ -81,19 +81,7 @@ c.KubeSpawner.singleuser_extra_containers = [
 # and later calls against REST API don't attempt to reuse it. This is
 # just to avoid potential for any problems with connection reuse.
 
-server_url = "https://openshift.default.svc.cluster.local"
-auth_info_url = '%s/.well-known/oauth-authorization-server' % server_url
-
-with requests.Session() as session:
-    response = session.get(auth_info_url, verify=False)
-    data = json.loads(response.content.decode('UTF-8'))
-    address = data["issuer"]
-
-# Enable the OpenShift authenticator. The OPENSHIFT_URL environment
-# variable must be set before importing the authenticator as it only
-# reads it when module is first imported.
-
-os.environ['OPENSHIFT_URL'] = address
+# Enable the OpenShift authenticator.
 
 from oauthenticator.openshift import OpenShiftOAuthenticator
 c.JupyterHub.authenticator_class = OpenShiftOAuthenticator

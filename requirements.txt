@@ -1,5 +1,4 @@
-openshift
-jupyterhub-kubespawner==0.11.1
+openshift==0.11.2
 git+https://github.com/opendatahub-io/jupyterhub-singleuser-profiles.git@068b9ea058666ae662919bdec7928c4ab186caa0
 git+https://github.com/vpavlin/jupyter-publish-extension.git@7cbf34e494fd9a0a79e9cd9a8c1d48a6775b9f49
-git+https://github.com/vpavlin/oauthenticator.git
+git+https://github.com/vpavlin/oauthenticator.git@bug/openshift-variables
