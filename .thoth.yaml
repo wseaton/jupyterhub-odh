@@ -1,0 +1,15 @@
+host: khemenu.thoth-station.ninja
+tls_verify: false
+requirements_format: pipenv
+
+managers:
+  - name: info
+  - name: version
+    configuration:
+      maintainers:
+        - vpavlin
+        - LaVLaS
+      assignees:
+        - sesheta
+      labels: [bot]
+      changelog_file: true
