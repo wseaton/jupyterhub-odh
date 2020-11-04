@@ -33,7 +33,7 @@ c.JupyterHub.services = [
                                 'name': 'jsp-api',
                                 'url': 'http://127.0.0.1:8181',
                                 'admin': True,
-                                'command': [sys.executable, '/opt/app-root/lib64/python3.6/site-packages/api/app.py'],
+                                'command': ['jupyterhub-singleuser-profiles-api'],
                                 'environment': jsp_api_dict
                             }
                         ]
@@ -256,3 +256,4 @@ c.KubeSpawner.user_storage_class = os.environ.get("JUPYTERHUB_STORAGE_CLASS", c.
 admin_users = os.environ.get('JUPYTERHUB_ADMIN_USERS')
 if admin_users:
     c.Authenticator.admin_users = set(admin_users.split(','))
+    
