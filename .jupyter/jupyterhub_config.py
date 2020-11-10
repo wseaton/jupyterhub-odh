@@ -75,72 +75,11 @@ c.KubeSpawner.singleuser_extra_containers = [
     ]
 
 
-# Work out the public server address for the OpenShift REST API. Don't
-# know how to get this via the REST API client so do a raw request to
-# get it. Make sure request is done in a session so connection is closed
-# and later calls against REST API don't attempt to reuse it. This is
-# just to avoid potential for any problems with connection reuse.
+# Enable the Dummy authenticator.
+from dummyauthenticator import DummyAuthenticator
 
-# Enable the OpenShift authenticator.
+c.JupyterHub.authenticator_class = DummyAuthenticator
 
-from oauthenticator.openshift import OpenShiftOAuthenticator
-c.JupyterHub.authenticator_class = OpenShiftOAuthenticator
-
-# Override scope as oauthenticator code doesn't set it correctly.
-# Need to lodge a PR against oauthenticator to have this fixed.
-
-#OpenShiftOAuthenticator.scope = ['user:info']
-
-# Setup authenticator configuration using details from environment.
-
-service_name = os.environ['JUPYTERHUB_SERVICE_NAME']
-
-service_account_name = '%s-hub' %  service_name
-service_account_path = '/var/run/secrets/kubernetes.io/serviceaccount'
-
-with open(os.path.join(service_account_path, 'namespace')) as fp:
-    namespace = fp.read().strip()
-
-client_id = 'system:serviceaccount:%s:%s' % (namespace, service_account_name)
-
-c.OpenShiftOAuthenticator.client_id = client_id
-
-with open(os.path.join(service_account_path, 'token')) as fp:
-    client_secret = fp.read().strip()
-
-c.OpenShiftOAuthenticator.client_secret = client_secret
-
-# Work out hostname for the exposed route of the JupyterHub server. This
-# is tricky as we need to use the REST API to query it.
-
-verify_ssl = False
-
-from kubernetes import client, config
-from openshift.dynamic import DynamicClient
-
-config.load_incluster_config()
-
-configuration = client.Configuration()
-configuration.verify_ssl = verify_ssl
-
-oapi_client = DynamicClient(
-    client.ApiClient(configuration=configuration)
-)
-
-routes = oapi_client.resources.get(kind='Route', api_version='route.openshift.io/v1')
-
-route_list = routes.get(namespace=namespace)
-
-host = None
-
-for route in route_list.items:
-    if route.metadata.name == service_name:
-        host = route.spec.host
-
-if not host:
-    raise RuntimeError('Cannot calculate external host name for JupyterHub.')
-
-c.OpenShiftOAuthenticator.oauth_callback_url = 'https://%s/hub/oauth_callback' % host
 
 from jupyterhub_singleuser_profiles.profiles import SingleuserProfiles
 
