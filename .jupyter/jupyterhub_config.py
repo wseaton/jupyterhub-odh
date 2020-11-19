@@ -75,6 +75,7 @@ c.KubeSpawner.singleuser_extra_containers = [
     ]
 
 
+import warnings
 from traitlets import Unicode
 from jupyterhub.auth import Authenticator
 from tornado import gen
