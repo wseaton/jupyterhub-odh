@@ -75,10 +75,59 @@ c.KubeSpawner.singleuser_extra_containers = [
     ]
 
 
-# Enable the Dummy authenticator.
-from dummyauthenticator import DummyAuthenticator
+from traitlets import Unicode
+from jupyterhub.auth import Authenticator
+from tornado import gen
 
-c.JupyterHub.authenticator_class = DummyAuthenticator
+class DummyDataAuthenticator(Authenticator):
+    password = Unicode(
+        None,
+        allow_none=True,
+        config=True,
+        help="""
+        Set a global password for all users wanting to log in.
+        This allows users with any username to log in with the same static password.
+        """
+    )
+
+    @gen.coroutine
+    def authenticate(self, handler, data):
+        if self.password:
+            if data['password'] == self.password:
+                return data['username']
+            return None
+
+        # super_secret = yield secret_for_user(username)
+
+        return {
+            'name': data['username'],
+            'auth_state': {
+                'super_secret': "MYSUPERDUPERSECRET", # could be retrieved from vault
+            },
+        }
+
+
+    @gen.coroutine
+    def pre_spawn_start(self, user, spawner):
+        """Pass upstream_token to spawner via environment variable"""
+        auth_state = yield user.get_auth_state()
+        if not auth_state:
+            # auth_state not enabled
+            return
+        spawner.environment['SUPER_SECRET'] = auth_state['super_secret']
+
+
+
+c.JupyterHub.authenticator_class = DummyDataAuthenticator
+c.DummyDataAuthenticator.enable_auth_state = True
+
+
+if 'JUPYTERHUB_CRYPT_KEY' not in os.environ:
+    warnings.warn(
+        "Need JUPYTERHUB_CRYPT_KEY env for persistent auth_state.\n"
+        "    export JUPYTERHUB_CRYPT_KEY=$(openssl rand -hex 32)"
+    )
+    c.CryptKeeper.keys = [ os.urandom(32) ]
 
 
 from jupyterhub_singleuser_profiles.profiles import SingleuserProfiles
