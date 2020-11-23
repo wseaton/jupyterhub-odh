@@ -220,8 +220,25 @@ class OpenShiftSpawner(KubeSpawner):
 
 
 def apply_pod_profile(spawner, pod):
-  spawner.single_user_profiles.load_profiles(username=spawner.user.name)
-  profile = spawner.single_user_profiles.get_merged_profile(spawner.image_spec, user=spawner.user.name, size=spawner.deployment_size)
+    from kubernetes import client
+
+    spawner.single_user_profiles.load_profiles(username=spawner.user.name)
+    profile = spawner.single_user_profiles.get_merged_profile(spawner.image_spec, user=spawner.user.name, size=spawner.deployment_size)
+  
+    # here we modify the pod.spec at spawntime by mounting a secret. 
+    pod.spec.containers[0].env.append(
+        client.V1EnvVar(
+            name='TEST_MOUNTED_SECRET',
+            value_from=client.V1EnvVarSource(
+                secret_key_ref=client.V1SecretKeySelector(
+                    name='test-secret',
+                    key='TEST_KEY',
+                )
+            )
+        )
+    )
+
+  
   return SingleuserProfiles.apply_pod_profile(spawner, pod, profile)
 
 def setup_environment(spawner):
