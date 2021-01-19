@@ -228,7 +228,7 @@ c.LDAPAuthenticator.server_address = os.environ.get('LDAP_HOST')
 c.LDAPAuthenticator.bind_dn_template = [
   "uid={username},ou=users,dc=%s,dc=com" % os.environ.get("LDAP_BIND_DN_DC")
 ]
-c.LDAPAuthenticator.lookup_dn_search_user = os.environ.get('LDAP_USER')'
+c.LDAPAuthenticator.lookup_dn_search_user = os.environ.get('LDAP_USER')
 c.LDAPAuthenticator.lookup_dn_search_password = os.environ.get('LDAP_PASSWORD')
 
 
