@@ -58,48 +58,6 @@ from jupyterhub.auth import Authenticator
 from tornado import gen
 from traitlets import Unicode
 
-
-class DummyDataAuthenticator(Authenticator):
-    password = Unicode(
-        None,
-        allow_none=True,
-        config=True,
-        help="""
-        Set a global password for all users wanting to log in.
-        This allows users with any username to log in with the same static password.
-        """,
-    )
-
-    @gen.coroutine
-    def authenticate(self, handler, data):
-        if self.password:
-            if data["password"] == self.password:
-                return data["username"]
-            return None
-
-        # super_secret = yield secret_for_user(username)
-
-        return {
-            "name": data["username"],
-            "auth_state": {
-                "super_secret": "MYSUPERDUPERSECRET",  # could be retrieved from vault
-            },
-        }
-
-    @gen.coroutine
-    def pre_spawn_start(self, user, spawner):
-        """Pass upstream_token to spawner via environment variable"""
-        auth_state = yield user.get_auth_state()
-        if not auth_state:
-            # auth_state not enabled
-            return
-        spawner.environment["SUPER_SECRET"] = auth_state["super_secret"]
-
-
-c.JupyterHub.authenticator_class = DummyDataAuthenticator
-c.DummyDataAuthenticator.enable_auth_state = True
-
-
 if "JUPYTERHUB_CRYPT_KEY" not in os.environ:
     warnings.warn(
         "Need JUPYTERHUB_CRYPT_KEY env for persistent auth_state.\n"
@@ -116,9 +74,7 @@ class OpenShiftSpawner(KubeSpawner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.single_user_services = []
-        self.single_user_profiles = SingleuserProfiles(
-            gpu_mode=os.environ.get("GPU_MODE"), verify_ssl=verify_ssl
-        )
+        self.single_user_profiles = SingleuserProfiles(gpu_mode=os.environ.get("GPU_MODE"))
         self.gpu_mode = self.single_user_profiles.gpu_mode
         self.gpu_count = 0
         self.deployment_size = None
@@ -216,18 +172,18 @@ def apply_pod_profile(spawner, pod):
         spawner.image_spec, user=spawner.user.name, size=spawner.deployment_size
     )
 
-    # here we modify the pod.spec at spawntime by mounting a secret.
-    pod.spec.containers[0].env.append(
-        client.V1EnvVar(
-            name="TEST_MOUNTED_SECRET",
-            value_from=client.V1EnvVarSource(
-                secret_key_ref=client.V1SecretKeySelector(
-                    name="test-secret",
-                    key="TEST_KEY",
-                )
-            ),
-        )
-    )
+    # # here we modify the pod.spec at spawntime by mounting a secret.
+    # pod.spec.containers[0].env.append(
+    #     client.V1EnvVar(
+    #         name="TEST_MOUNTED_SECRET",
+    #         value_from=client.V1EnvVarSource(
+    #             secret_key_ref=client.V1SecretKeySelector(
+    #                 name="test-secret",
+    #                 key="TEST_KEY",
+    #             )
+    #         ),
+    #     )
+    # )
 
     return SingleuserProfiles.apply_pod_profile(spawner, pod, profile)
 
@@ -265,6 +221,17 @@ c.KubeSpawner.volume_mounts = [dict(name="data", mountPath="/opt/app-root/src")]
 c.KubeSpawner.user_storage_class = os.environ.get(
     "JUPYTERHUB_STORAGE_CLASS", c.KubeSpawner.user_storage_class
 )
+
+import os
+c.JupyterHub.authenticator_class = 'ldapauthenticator.LDAPAuthenticator'
+c.LDAPAuthenticator.server_address = os.environ.get('LDAP_HOST')
+c.LDAPAuthenticator.bind_dn_template = [
+  "uid={username},ou=users,dc=%s,dc=com" % os.environ.get("LDAP_BIND_DN_DC")
+]
+c.LDAPAuthenticator.lookup_dn_search_user = os.environ.get('LDAP_USER')'
+c.LDAPAuthenticator.lookup_dn_search_password = os.environ.get('LDAP_PASSWORD')
+
+
 admin_users = os.environ.get("JUPYTERHUB_ADMIN_USERS")
 if admin_users:
     c.Authenticator.admin_users = set(admin_users.split(","))
