@@ -212,7 +212,7 @@ c.LDAPAuthenticator.lookup_dn_search_password = os.environ.get('LDAP_PASSWORD')
 
 allowed_groups = os.environ.get("LDAP_ALLOWED_GROUPS")  
 if allowed_groups:
-    c.LDAPAuthenticator.allowed_groups = set(allowed_groups.split("|"))
+    c.LDAPAuthenticator.allowed_groups = list(set(allowed_groups.split("|")))
 
 admin_users = os.environ.get("JUPYTERHUB_ADMIN_USERS")
 if admin_users:
@@ -227,7 +227,7 @@ if os.environ.get("JUPYTERHUB_AUTH_STATE", "").lower() == "true":
     c.Authenticator.enable_auth_state = True
     # ex. ["memberOf"] will grab groups in OpenLDAP
     # will fail if attr unset, because there's no point in enabling auth state otherwise
-    c.LDAPAuthenticator.auth_state_attributes = set(os.environ["LDAP_AUTH_STATE_ATTR"].split(","))
+    c.LDAPAuthenticator.auth_state_attributes = list(set(os.environ["LDAP_AUTH_STATE_ATTR"].split(",")))
 
 def auth_state_hook(spawner, auth_state):
     spawner.userdata = auth_state
