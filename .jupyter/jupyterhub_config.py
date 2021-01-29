@@ -164,28 +164,7 @@ class OpenShiftSpawner(KubeSpawner):
         return options
 
 
-def apply_pod_profile(spawner, pod):
-    from kubernetes import client
 
-    spawner.single_user_profiles.load_profiles(username=spawner.user.name)
-    profile = spawner.single_user_profiles.get_merged_profile(
-        spawner.image_spec, user=spawner.user.name, size=spawner.deployment_size
-    )
-
-    # # here we modify the pod.spec at spawntime by mounting a secret.
-    # pod.spec.containers[0].env.append(
-    #     client.V1EnvVar(
-    #         name="TEST_MOUNTED_SECRET",
-    #         value_from=client.V1EnvVarSource(
-    #             secret_key_ref=client.V1SecretKeySelector(
-    #                 name="test-secret",
-    #                 key="TEST_KEY",
-    #             )
-    #         ),
-    #     )
-    # )
-
-    return SingleuserProfiles.apply_pod_profile(spawner, pod, profile)
 
 
 def setup_environment(spawner):
@@ -203,7 +182,7 @@ c.JupyterHub.spawner_class = OpenShiftSpawner
 
 c.OpenShiftSpawner.pre_spawn_hook = setup_environment
 c.OpenShiftSpawner.post_stop_hook = clean_environment
-c.OpenShiftSpawner.modify_pod_hook = apply_pod_profile
+
 c.OpenShiftSpawner.cpu_limit = float(os.environ.get("SINGLEUSER_CPU_LIMIT", "1"))
 c.OpenShiftSpawner.mem_limit = os.environ.get("SINGLEUSER_MEM_LIMIT", "1G")
 c.OpenShiftSpawner.storage_pvc_ensure = True
@@ -231,7 +210,25 @@ c.LDAPAuthenticator.bind_dn_template = [
 c.LDAPAuthenticator.lookup_dn_search_user = os.environ.get('LDAP_USER')
 c.LDAPAuthenticator.lookup_dn_search_password = os.environ.get('LDAP_PASSWORD')
 
+allowed_groups = os.environ.get("LDAP_ALLOWED_GROUPS")  
+if allowed_groups:
+    c.LDAPAuthenticator.allowed_groups = set(allowed_groups.split("|"))
 
 admin_users = os.environ.get("JUPYTERHUB_ADMIN_USERS")
 if admin_users:
     c.Authenticator.admin_users = set(admin_users.split(","))
+
+ldap_ssl = lower(os.environ.get("LDAP_USE_SSL", "")) == "true"
+if ldap_ssl:
+    c.LDAPAuthenticator.use_ssl = True
+    c.LDAPAuthenticator.server_port = 636
+
+if lower(os.environ.get("JUPYTERHUB_AUTH_STATE", "")) == "true":
+    c.Authenticator.enable_auth_state = True
+    # ex. ["memberOf"] will grab groups in OpenLDAP
+    # will fail if attr unset, because there's no point in enabling auth state otherwise
+    c.LDAPAuthenticator.auth_state_attributes = set(os.environ["LDAP_AUTH_STATE_ATTR"].split(","))
+
+def auth_state_hook(spawner, auth_state):
+    spawner.userdata = auth_state
+c.Spawner.auth_state_hook = auth_state_hook
