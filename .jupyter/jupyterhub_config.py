@@ -218,12 +218,12 @@ admin_users = os.environ.get("JUPYTERHUB_ADMIN_USERS")
 if admin_users:
     c.Authenticator.admin_users = set(admin_users.split(","))
 
-ldap_ssl = lower(os.environ.get("LDAP_USE_SSL", "")) == "true"
+ldap_ssl = os.environ.get("LDAP_USE_SSL", "").lower() == "true"
 if ldap_ssl:
     c.LDAPAuthenticator.use_ssl = True
     c.LDAPAuthenticator.server_port = 636
 
-if lower(os.environ.get("JUPYTERHUB_AUTH_STATE", "")) == "true":
+if os.environ.get("JUPYTERHUB_AUTH_STATE", "").lower() == "true":
     c.Authenticator.enable_auth_state = True
     # ex. ["memberOf"] will grab groups in OpenLDAP
     # will fail if attr unset, because there's no point in enabling auth state otherwise
