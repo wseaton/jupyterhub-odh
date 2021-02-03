@@ -280,7 +280,7 @@ def mount_secrets(spawner, pod):
     return spawner, pod
 
 
-def apply_pod_profile_secret_mount(spawner, pod):
+def apply_pod_profile(spawner, pod):
     from kubernetes import client
 
     spawner.single_user_profiles.load_profiles(username=spawner.user.name)
