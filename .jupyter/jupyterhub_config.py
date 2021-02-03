@@ -51,7 +51,6 @@ c.KubeSpawner.singleuser_extra_containers = [
     }
 ]
 
-
 import warnings
 
 from jupyterhub.auth import Authenticator
@@ -74,7 +73,9 @@ class OpenShiftSpawner(KubeSpawner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.single_user_services = []
-        self.single_user_profiles = SingleuserProfiles(gpu_mode=os.environ.get("GPU_MODE"))
+        self.single_user_profiles = SingleuserProfiles(
+            gpu_mode=os.environ.get("GPU_MODE")
+        )
         self.gpu_mode = self.single_user_profiles.gpu_mode
         self.gpu_count = 0
         self.deployment_size = None
@@ -164,9 +165,6 @@ class OpenShiftSpawner(KubeSpawner):
         return options
 
 
-
-
-
 def setup_environment(spawner):
     spawner.single_user_profiles.load_profiles(username=spawner.user.name)
     spawner.single_user_profiles.setup_services(
@@ -177,6 +175,10 @@ def setup_environment(spawner):
 def clean_environment(spawner):
     spawner.single_user_profiles.clean_services(spawner, spawner.user.name)
 
+def apply_pod_profile(spawner, pod):
+  spawner.single_user_profiles.load_profiles(username=spawner.user.name)
+  profile = spawner.single_user_profiles.get_merged_profile(spawner.image, user=spawner.user.name, size=spawner.deployment_size)
+  return SingleuserProfiles.apply_pod_profile(spawner, pod, profile)
 
 c.JupyterHub.spawner_class = OpenShiftSpawner
 
@@ -202,15 +204,16 @@ c.KubeSpawner.user_storage_class = os.environ.get(
 )
 
 import os
-c.JupyterHub.authenticator_class = 'ldapauthenticator.LDAPAuthenticator'
-c.LDAPAuthenticator.server_address = os.environ.get('LDAP_HOST')
-c.LDAPAuthenticator.bind_dn_template = [
-  "uid={username},ou=users,dc=%s,dc=com" % os.environ.get("LDAP_BIND_DN_DC")
-]
-c.LDAPAuthenticator.lookup_dn_search_user = os.environ.get('LDAP_USER')
-c.LDAPAuthenticator.lookup_dn_search_password = os.environ.get('LDAP_PASSWORD')
 
-allowed_groups = os.environ.get("LDAP_ALLOWED_GROUPS")  
+c.JupyterHub.authenticator_class = "ldapauthenticator.LDAPAuthenticator"
+c.LDAPAuthenticator.server_address = os.environ.get("LDAP_HOST")
+c.LDAPAuthenticator.bind_dn_template = [
+    "uid={username},ou=users,dc=%s,dc=com" % os.environ.get("LDAP_BIND_DN_DC")
+]
+c.LDAPAuthenticator.lookup_dn_search_user = os.environ.get("LDAP_USER")
+c.LDAPAuthenticator.lookup_dn_search_password = os.environ.get("LDAP_PASSWORD")
+
+allowed_groups = os.environ.get("LDAP_ALLOWED_GROUPS")
 if allowed_groups:
     c.LDAPAuthenticator.allowed_groups = list(set(allowed_groups.split("|")))
 
@@ -227,8 +230,70 @@ if os.environ.get("JUPYTERHUB_AUTH_STATE", "").lower() == "true":
     c.Authenticator.enable_auth_state = True
     # ex. ["memberOf"] will grab groups in OpenLDAP
     # will fail if attr unset, because there's no point in enabling auth state otherwise
-    c.LDAPAuthenticator.auth_state_attributes = list(set(os.environ["LDAP_AUTH_STATE_ATTR"].split(",")))
+    c.LDAPAuthenticator.auth_state_attributes = list(
+        set(os.environ["LDAP_AUTH_STATE_ATTR"].split(","))
+    )
+
 
 def auth_state_hook(spawner, auth_state):
     spawner.userdata = auth_state
+
 c.Spawner.auth_state_hook = auth_state_hook
+
+def inverse_nested_dict(input_dict: dict):
+    d = dict()
+    for secret, groups in input_dict.items():
+        for group in groups:
+            d[group] = secret
+    return d
+
+import yaml
+
+def mount_secrets(spawner, pod):
+    from kubernetes import client
+    groups = spawner.userdata.get("memberOf", [])
+
+    with open('/opt/app-root/ldap/rolemapping', 'r') as f:
+        ROLE_MAPPING = yaml.load(f)
+
+    inv_role_mapping = inverse_nested_dict(ROLE_MAPPING)
+    
+    _loaded = set()
+    
+    for group in groups:
+        secret_name = inv_role_mapping.get(group, "").lower()
+        if secret_name and secret_name not in _loaded:
+            pod.spec.volumes.append(
+                client.V1Volume(
+                    name=(secret_name + "-volume"),
+                    secret=client.V1SecretVolumeSource(secret_name=secret_name),
+                )
+            )
+            pod.spec.containers[0].volume_mounts.append(
+                client.V1VolumeMount(
+                    mount_path="/opt/app-root/src/.aws/{}".format(
+                        secret_name.lower()
+                    ),
+                    name=(secret_name + "-volume"),
+                )
+            )
+            _loaded.add(secret_name)
+    
+    return spawner, pod
+
+
+def apply_pod_profile(spawner, pod):
+    spawner.single_user_profiles.load_profiles(username=spawner.user.name)
+    profile = spawner.single_user_profiles.get_merged_profile(
+        spawner.image_spec, user=spawner.user.name, size=spawner.deployment_size
+    )
+    
+    if os.environ.get('LDAP_SECRET_MOUNT') and os.path.exists("/opt/app-root/ldap/rolemapping"):
+        try:
+            spawner, pod = mount_secrets(spawner, pod)
+        except Exception as e:
+            print("Secrets failed to mount. {}".format(e))
+    
+    return SingleuserProfiles.apply_pod_profile(spawner, pod, profile)
+
+c.OpenShiftSpawner.modify_pod_hook = apply_pod_profile
