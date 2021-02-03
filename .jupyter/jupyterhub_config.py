@@ -51,7 +51,6 @@ c.KubeSpawner.singleuser_extra_containers = [
     }
 ]
 
-
 import warnings
 
 from jupyterhub.auth import Authenticator
@@ -248,7 +247,10 @@ def inverse_nested_dict(input_dict: dict):
             d[group] = secret
     return d
 
+import yaml
+
 def mount_secrets(spawner, pod):
+    from kubernetes import client
     groups = spawner.userdata.get("memberOf", [])
 
     with open('/opt/app-root/ldap/rolemapping', 'r') as f:
@@ -281,8 +283,6 @@ def mount_secrets(spawner, pod):
 
 
 def apply_pod_profile(spawner, pod):
-    from kubernetes import client
-
     spawner.single_user_profiles.load_profiles(username=spawner.user.name)
     profile = spawner.single_user_profiles.get_merged_profile(
         spawner.image_spec, user=spawner.user.name, size=spawner.deployment_size
