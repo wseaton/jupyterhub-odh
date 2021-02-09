@@ -271,7 +271,7 @@ def mount_secrets(spawner, pod):
             )
             pod.spec.containers[0].volume_mounts.append(
                 client.V1VolumeMount(
-                    mount_path="/opt/app-root/src/.aws/{}".format(
+                    mount_path="/opt/app-root/secrets/.aws/{}".format(
                         secret_name.lower()
                     ),
                     name=(secret_name + "-volume"),
