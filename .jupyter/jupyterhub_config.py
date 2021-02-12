@@ -125,6 +125,13 @@ with open(os.path.join(service_account_path, 'token')) as fp:
 
 c.OpenShiftOAuthenticator.client_secret = client_secret
 
+allowed_groups = os.environ.get('JUPYTERHUB_ALLOWED_GROUPS')
+admin_groups = os.environ.get('JUPYTERHUB_ADMIN_GROUPS')
+if allowed_groups:
+    c.OpenShiftOAuthenticator.allowed_groups = set(allowed_groups.split(','))
+if admin_groups:
+    c.OpenShiftOAuthenticator.admin_groups = set(admin_groups.split(','))
+
 # Work out hostname for the exposed route of the JupyterHub server. This
 # is tricky as we need to use the REST API to query it.
 

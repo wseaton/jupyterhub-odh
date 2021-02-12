@@ -3,6 +3,9 @@ set -e
 
 /usr/libexec/s2i/assemble
 
+# Install pycurl for tornado to support self-signed certs - see https://github.com/jupyterhub/oauthenticator/pull/410
+pip install --compile --install-option="--with-nss" --no-cache-dir pycurl
+
 JSP_UI_PKG_PATH=/opt/app-root/lib/python3.6/site-packages/jupyterhub_singleuser_profiles/ui
 JSP_UI_SRC_PATH=/opt/app-root/src/jupyterhub-singleuser-profiles/jupyterhub_singleuser_profiles/ui/
 
