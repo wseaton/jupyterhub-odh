@@ -35,12 +35,11 @@ c.JupyterHub.services = [
                                 'admin': True,
                                 'command': ['jupyterhub-singleuser-profiles-api'],
                                 'environment': jsp_api_dict
-                            },
-                            {
-                              'name': 'prometheus',
-                              'api_token': os.environ.get("PROMETHEUS_API_TOKEN")
                             }
                         ]
+
+if "PROMETHEUS_API_TOKEN" in os.environ:
+    c.JupyterHub.services.append(dict(name='prometheus', api_token=os.environ.get("PROMETHEUS_API_TOKEN")))
 
 DEFAULT_MOUNT_PATH = '/opt/app-root/src'
 
