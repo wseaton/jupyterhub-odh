@@ -32,7 +32,7 @@ c.JupyterHub.services = [
 ]
 
 if "PROMETHEUS_API_TOKEN" in os.environ:
-    c.JupyterHub.services.append(dict(name='prometheus', api_token=os.environ.get("PROMETHEUS_API_TOKEN"))
+    c.JupyterHub.services.append(dict(name='prometheus', api_token=os.environ.get("PROMETHEUS_API_TOKEN")))
 
 c.KubeSpawner.singleuser_extra_containers = [
     {
