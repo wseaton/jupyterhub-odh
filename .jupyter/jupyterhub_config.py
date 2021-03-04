@@ -252,39 +252,82 @@ def inverse_nested_dict(input_dict: dict):
     return d
 
 import yaml
+from kubernetes import client
 
-def mount_secrets(spawner, pod):
-    from kubernetes import client
+def mount_secrets(spawner, pod, role_mapping):
+
     groups = spawner.userdata.get("memberOf", [])
 
-    with open('/opt/app-root/ldap/rolemapping', 'r') as f:
-        ROLE_MAPPING = yaml.load(f)
-
-    inv_role_mapping = inverse_nested_dict(ROLE_MAPPING)
-    
     _loaded = set()
     
     for group in groups:
-        secret_name = inv_role_mapping.get(group, "").lower()
-        if secret_name and secret_name not in _loaded:
-            pod.spec.volumes.append(
-                client.V1Volume(
-                    name=(secret_name + "-volume"),
-                    secret=client.V1SecretVolumeSource(secret_name=secret_name),
-                )
-            )
-            pod.spec.containers[0].volume_mounts.append(
-                client.V1VolumeMount(
-                    mount_path="/opt/app-root/secrets/.aws/{}".format(
-                        secret_name.lower()
-                    ),
-                    name=(secret_name + "-volume"),
-                )
-            )
-            _loaded.add(secret_name)
+        
+        try:
+            secrets = role_mapping['groups'].get(group, {}).get('secrets')
+        except KeyError:
+            continue
+        
+        if secrets:
+            for secret_name in secrets:
+                secret_name = secret_name.lower()
+
+                if secret_name and secret_name not in _loaded:
+                    pod.spec.volumes.append(
+                        client.V1Volume(
+                            name=(secret_name + "-volume"),
+                            secret=client.V1SecretVolumeSource(secret_name=secret_name),
+                        )
+                    )
+                    pod.spec.containers[0].volume_mounts.append(
+                        client.V1VolumeMount(
+                            mount_path="/opt/app-root/secrets/.aws/{}".format(
+                                secret_name.lower()
+                            ),
+                            name=(secret_name + "-volume"),
+                            read_only=True
+                        )
+                    )
+                    _loaded.add(secret_name)
     
     return spawner, pod
 
+
+def mount_fs(spawner, pod, role_mapping):
+    
+    groups = spawner.userdata.get("memberOf", [])
+    _loaded = set()
+    
+    # do this only once, or have a bad time
+    if any(set(groups).intersection(set(role_mapping['groups'].keys()))):
+        pod.spec.volumes.append(
+            client.V1Volume(
+                name="efs-volume",
+                persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
+                    claim_name=os.environ.get('NFS_SHARE_PVC', "pvc-jupyterhub-nfs")
+                )
+            )
+        )
+
+    for group in groups:
+        try:
+            fs = role_mapping['groups'].get(group, {}).get('fileshare')
+        except KeyError:
+            continue
+        
+        if fs:
+            for share in fs:
+                if share and share not in _loaded:                    
+                    pod.spec.containers[0].volume_mounts.append(
+                        client.V1VolumeMount(
+                            mount_path="/opt/app-root/share/nfs/{share}".format(share=share),
+                            name="efs-volume",
+                            sub_path=share
+                        )
+                    )
+                    _loaded.add(share)
+
+    return spawner, pod
+                    
 
 def apply_pod_profile(spawner, pod):
     spawner.single_user_profiles.load_profiles(username=spawner.user.name)
@@ -293,8 +336,11 @@ def apply_pod_profile(spawner, pod):
     )
     
     if os.environ.get('LDAP_SECRET_MOUNT') and os.path.exists("/opt/app-root/ldap/rolemapping"):
+        with open('/opt/app-root/ldap/rolemapping', 'r') as f:
+            role_mapping = yaml.load(f)
         try:
-            spawner, pod = mount_secrets(spawner, pod)
+            spawner, pod = mount_secrets(spawner, pod, role_mapping)
+            spawner, pod = mount_fs(spawner, pod, role_mapping)
         except Exception as e:
             print("Secrets failed to mount. {}".format(e))
     
